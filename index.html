@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>월별 자금 흐름</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=Pretendard:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root{
+    --paper:#F5F6F2; --paper-2:#EDEFE9; --ink:#1D2B27; --ink-soft:#5B6B65;
+    --line:#D8DCD3; --teal:#1F5F58; --teal-deep:#153F3A;
+    --gold:#B8892B; --gold-soft:#EFE2C4;
+    --income:#1F5F58; --fixed:#5B6B65; --invest:#B8892B; --variable:#A6493A;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--paper);color:var(--ink);font-family:'Pretendard',-apple-system,sans-serif;}
+  .wrap{max-width:960px;margin:0 auto;padding:24px 18px 90px;}
+
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--teal);margin-bottom:6px;}
+  h1{font-family:'Noto Serif KR',serif;font-weight:700;font-size:26px;margin:0 0 20px;color:var(--teal-deep);}
+
+  /* month nav */
+  .monthnav{display:flex;align-items:center;justify-content:space-between;background:#fff;
+    border:1px solid var(--line);border-radius:var(--radius);padding:10px 14px;margin-bottom:18px;}
+  .monthnav button{background:var(--paper-2);border:1px solid var(--line);border-radius:8px;
+    width:36px;height:36px;font-size:16px;cursor:pointer;color:var(--teal-deep);}
+  .monthnav button:hover{background:var(--teal);color:#fff;border-color:var(--teal);}
+  .monthnav .label{font-family:'Noto Serif KR',serif;font-size:19px;font-weight:700;color:var(--teal-deep);}
+  .monthnav .today{font-size:11px;color:var(--ink-soft);font-family:'JetBrains Mono',monospace;cursor:pointer;}
+
+  .summary-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px;}
+  @media(max-width:700px){.summary-row{grid-template-columns:1fr 1fr;}}
+  .scard{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;}
+  .scard .k{font-size:11.5px;color:var(--ink-soft);margin-bottom:6px;}
+  .scard .v{font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:700;}
+  .scard.income .v{color:var(--income);}
+  .scard.expense .v{color:var(--variable);}
+  .scard.invest .v{color:var(--gold);}
+  .scard.net{background:var(--teal-deep);}
+  .scard.net .k{color:#cfe4df;}
+  .scard.net .v{color:#fff;}
+
+  section{background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px 20px;margin-bottom:18px;}
+  .sec-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+  h2{font-family:'Noto Serif KR',serif;font-size:16px;margin:0;color:var(--teal-deep);}
+  .sec-desc{font-size:12px;color:var(--ink-soft);margin:0 0 14px;}
+  .tag-btn{background:none;border:1px solid var(--line);color:var(--teal-deep);font-size:12px;
+    padding:5px 11px;border-radius:20px;cursor:pointer;font-weight:600;}
+  .tag-btn:hover{background:var(--paper-2);}
+
+  .item-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;
+    border-bottom:1px solid var(--paper-2);font-size:13.5px;}
+  .item-row:last-child{border-bottom:none;}
+  .item-name{display:flex;align-items:center;gap:8px;}
+  .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+  .dot.income{background:var(--income);}
+  .dot.fixed{background:var(--fixed);}
+  .dot.invest{background:var(--gold);}
+  .item-sub{font-size:11px;color:var(--ink-soft);}
+  .item-amt{font-family:'JetBrains Mono',monospace;font-weight:600;}
+  .item-amt.neg{color:var(--variable);}
+  .item-amt.pos{color:var(--income);}
+  .item-actions{display:flex;gap:6px;margin-left:10px;}
+  .icon-btn{cursor:pointer;color:var(--ink-soft);font-size:13px;padding:2px 5px;}
+  .icon-btn:hover{color:var(--variable);}
+
+  /* variable inputs */
+  .var-row{display:grid;grid-template-columns:1fr 130px 30px;gap:8px;align-items:center;padding:6px 0;}
+  .var-row input[type=text].catname{border:1px solid transparent;background:transparent;font-size:13.5px;
+    font-weight:600;padding:5px 6px;border-radius:5px;width:100%;}
+  .var-row input[type=text].catname:hover{border-color:var(--line);}
+  .var-row input.amt{width:100%;text-align:right;border:1px solid var(--line);border-radius:6px;
+    padding:6px 8px;font-family:'JetBrains Mono',monospace;font-size:13.5px;background:var(--paper);}
+  .var-row input.amt:focus{outline:none;border-color:var(--variable);background:#fff;}
+  .var-total{display:flex;justify-content:space-between;padding-top:10px;margin-top:6px;
+    border-top:2px solid var(--line);font-weight:700;font-size:13.5px;}
+
+  .empty{font-size:12.5px;color:var(--ink-soft);padding:10px 0;text-align:center;}
+
+  /* modal */
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(21,63,58,.35);z-index:50;
+    align-items:center;justify-content:center;padding:20px;}
+  .modal-bg.open{display:flex;}
+  .modal{background:#fff;border-radius:12px;padding:22px;max-width:420px;width:100%;
+    max-height:85vh;overflow-y:auto;}
+  .modal h3{font-family:'Noto Serif KR',serif;margin:0 0 14px;color:var(--teal-deep);font-size:17px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:12px;color:var(--ink-soft);margin-bottom:5px;}
+  .field input,.field select{width:100%;border:1px solid var(--line);border-radius:7px;padding:9px 10px;
+    font-family:'Pretendard';font-size:14px;background:var(--paper);}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--teal);background:#fff;}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .modal-actions{display:flex;gap:8px;margin-top:16px;}
+  .btn-primary{flex:1;background:var(--teal-deep);color:#fff;border:none;border-radius:8px;
+    padding:11px;font-size:14px;font-weight:600;cursor:pointer;}
+  .btn-secondary{background:none;border:1px solid var(--line);color:var(--ink-soft);border-radius:8px;
+    padding:11px 16px;font-size:14px;cursor:pointer;}
+
+  .save-status{font-size:11px;color:var(--ink-soft);text-align:right;margin-top:6px;
+    font-family:'JetBrains Mono',monospace;}
+
+  /* mobile / app-like layout */
+  html { -webkit-text-size-adjust: 100%; }
+  body { min-height: 100vh; overscroll-behavior-y: none; }
+  button, input, select { -webkit-tap-highlight-color: transparent; }
+  button { touch-action: manipulation; }
+  .icon-btn { min-width: 34px; min-height: 34px; display:inline-flex; align-items:center; justify-content:center; }
+  .tag-btn { min-height: 36px; }
+  .monthnav button { min-width: 42px; min-height: 42px; }
+  @media (max-width: 700px) {
+    .wrap { width:100%; max-width:none; padding: max(14px, env(safe-area-inset-top)) 12px calc(32px + env(safe-area-inset-bottom)); }
+    h1 { font-size: 23px; margin-bottom: 14px; }
+    .eyebrow { font-size: 10px; }
+    .monthnav { position: sticky; top: 0; z-index: 10; margin: 0 -12px 12px; border-radius: 0 0 10px 10px; padding: 9px 12px; }
+    .monthnav .label { font-size: 17px; }
+    .summary-row { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .scard { padding: 11px 12px; }
+    .scard .v { font-size: 16px; word-break: keep-all; }
+    section { padding: 14px 13px; margin-bottom: 12px; }
+    .sec-head { gap: 8px; }
+    h2 { font-size: 15px; }
+    .sec-desc { font-size: 11px; line-height: 1.45; }
+    .item-row { padding: 9px 0; }
+    .item-actions { gap: 2px; }
+    .var-row { grid-template-columns: minmax(0,1fr) 118px 34px; gap: 5px; }
+    .var-row input.amt { padding: 8px 7px; font-size: 13px; }
+    .var-row input[type=text].catname { padding: 7px 5px; }
+    .modal-bg { padding: 12px; align-items: flex-end; }
+    .modal { max-width: none; border-radius: 14px 14px 10px 10px; padding: 18px; max-height: 88vh; }
+    .modal input, .modal select { min-height: 44px; }
+    .btn-primary, .btn-secondary { min-height: 46px; }
+    .save-status { margin-top: 8px; padding-bottom: 4px; }
+  }
+
+</style>
+
+<meta name="theme-color" content="#153F3A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="자금 흐름">
+<link rel="manifest" href='data:application/manifest+json,{"name":"월별 자금 흐름","short_name":"자금 흐름","start_url":".","display":"standalone","background_color":"%23F5F6F2","theme_color":"%23153F3A","lang":"ko"}'>
+
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Monthly Cash Flow</div>
+  <h1>월별 자금 흐름</h1>
+
+  <div class="monthnav">
+    <button onclick="shiftMonth(-1)">‹</button>
+    <div>
+      <div class="label" id="monthLabel"></div>
+      <div class="today" onclick="goToday()">오늘로 이동</div>
+    </div>
+    <button onclick="shiftMonth(1)">›</button>
+  </div>
+
+  <div class="summary-row" id="summaryRow"></div>
+
+  <section>
+    <div class="sec-head"><h2>수입</h2><button class="tag-btn" onclick="openRuleModal('income')">+ 추가</button></div>
+    <p class="sec-desc">매달 자동 반복돼요. 기간이 정해진 항목은 종료월 이후 자동으로 사라져요.</p>
+    <div id="incomeList"></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>고정비 · 할부</h2><button class="tag-btn" onclick="openRuleModal('fixed')">+ 추가</button></div>
+    <p class="sec-desc">월세, 통신비처럼 매달 같은 금액이거나, 할부처럼 특정 달에만 나가는 항목이에요.</p>
+    <div id="fixedList"></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>투자</h2><button class="tag-btn" onclick="openRuleModal('invest')">+ 추가</button></div>
+    <p class="sec-desc">금·ETF처럼 정기적으로 매수하는 항목이에요.</p>
+    <div id="investList"></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>변동비 (이 달만 입력)</h2><button class="tag-btn" onclick="addVarCategory()">+ 카테고리</button></div>
+    <p class="sec-desc">교통·식비처럼 매달 금액이 바뀌는 항목은 여기서 직접 입력해요.</p>
+    <div id="varList"></div>
+    <div class="var-total"><span>변동비 합계</span><span id="varTotal">0원</span></div>
+  </section>
+
+  <div class="save-status" id="saveStatus">불러오는 중…</div>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3 id="modalTitle">항목 추가</h3>
+    <div class="field">
+      <label>이름</label>
+      <input type="text" id="f-name" autocomplete="off" placeholder="예: 월세+관리비">
+    </div>
+    <div class="field">
+      <label>금액 (원)</label>
+      <input type="text" id="f-amount" autocomplete="off" inputmode="numeric" placeholder="예: 400000">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>시작 월</label>
+        <input type="month" id="f-start" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>종료 월 (없으면 비워두기)</label>
+        <input type="month" id="f-end" autocomplete="off">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal()">취소</button>
+      <button class="btn-primary" onclick="saveRule()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'monthly-cashflow-v1';
+let data = null;
+let cursor = null; // {y, m} 1-indexed month
+let editingRule = null; // {type, id} or null for new
+let saveTimer = null;
+
+const DEFAULT_DATA = {
+  rules: [
+    {id:'r1', type:'income', name:'새 회사 급여', amount:2850000, start:'2026-09', end:''},
+    {id:'r2', type:'income', name:'엄마 이자수입', amount:500000, start:'2026-09', end:'2027-01'},
+    {id:'r3', type:'fixed', name:'월세+관리비', amount:400000, start:'2026-09', end:''},
+    {id:'r4', type:'fixed', name:'운전자보험', amount:20000, start:'2026-09', end:''},
+    {id:'r5', type:'fixed', name:'통신비(LG U+)', amount:175000, start:'2026-09', end:''},
+    {id:'r6', type:'fixed', name:'전기·가스', amount:100000, start:'2026-09', end:''},
+    {id:'r7', type:'fixed', name:'세스코', amount:32000, start:'2026-09', end:''},
+    {id:'r8', type:'fixed', name:'구독료(네이버+유튜브)', amount:18700, start:'2026-09', end:''},
+    {id:'r9', type:'fixed', name:'할부금', amount:825916, start:'2026-09', end:'2026-09'},
+    {id:'r10', type:'fixed', name:'할부금', amount:414896, start:'2026-10', end:'2026-10'},
+    {id:'r11', type:'fixed', name:'할부금', amount:201461, start:'2026-11', end:'2026-11'},
+    {id:'r12', type:'invest', name:'금 (퇴직금)', amount:1000000, start:'2026-09', end:'2027-03'},
+    {id:'r13', type:'invest', name:'금 (월급)', amount:600000, start:'2026-09', end:''},
+    {id:'r14', type:'invest', name:'ETF (퇴직금)', amount:1000000, start:'2026-09', end:'2027-03'},
+    {id:'r15', type:'invest', name:'ETF (월급)', amount:500000, start:'2026-09', end:''}
+  ],
+  variableCategories: ['교통','편의점','생필품/쇼핑','외식','배달음식','기타'],
+  monthlyVariables: {} // { '2026-09': {'교통': 168000, ...} }
+};
+
+function fmt(n){ return (Number(n)||0).toLocaleString('ko-KR') + '원'; }
+function fmtNum(n){ return (Number(n)||0).toLocaleString('ko-KR'); }
+function monthKey(y,m){ return `${y}-${String(m).padStart(2,'0')}`; }
+
+function load(){
+  try{
+    const saved = localStorage.getItem(STORAGE_KEY);
+    data = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_DATA));
+  }catch(e){
+    data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+  }
+  const now = new Date();
+  cursor = {y: now.getFullYear(), m: now.getMonth()+1};
+  render();
+  document.getElementById('saveStatus').textContent = '기기에 저장됨';
+}
+
+function scheduleSave(){
+  document.getElementById('saveStatus').textContent = '저장 중…';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      document.getElementById('saveStatus').textContent = '기기에 저장됨 · ' + new Date().toLocaleTimeString('ko-KR');
+    }catch(e){
+      document.getElementById('saveStatus').textContent = '저장 실패';
+    }
+  }, 300);
+}
+
+function shiftMonth(delta){
+  let m = cursor.m + delta;
+  let y = cursor.y;
+  if(m > 12){ m = 1; y++; }
+  if(m < 1){ m = 12; y--; }
+  cursor = {y,m};
+  render();
+}
+function goToday(){
+  const now = new Date();
+  cursor = {y: now.getFullYear(), m: now.getMonth()+1};
+  render();
+}
+
+function activeRules(type, mk){
+  return data.rules.filter(r=>{
+    if(r.type !== type) return false;
+    if(r.start && mk < r.start) return false;
+    if(r.end && mk > r.end) return false;
+    return true;
+  });
+}
+
+function render(){
+  const mk = monthKey(cursor.y, cursor.m);
+  document.getElementById('monthLabel').textContent = `${cursor.y}년 ${cursor.m}월`;
+
+  const incomes = activeRules('income', mk);
+  const fixed = activeRules('fixed', mk);
+  const invest = activeRules('invest', mk);
+  const varCats = data.variableCategories;
+  const varVals = data.monthlyVariables[mk] || {};
+
+  const incomeTotal = incomes.reduce((a,r)=>a+r.amount,0);
+  const fixedTotal = fixed.reduce((a,r)=>a+r.amount,0);
+  const investTotal = invest.reduce((a,r)=>a+r.amount,0);
+  const varTotal = varCats.reduce((a,c)=>a+(Number(varVals[c])||0),0);
+  const expenseTotal = fixedTotal + varTotal;
+  const net = incomeTotal - expenseTotal - investTotal;
+
+  document.getElementById('summaryRow').innerHTML = `
+    <div class="scard income"><div class="k">총수입</div><div class="v">${fmt(incomeTotal)}</div></div>
+    <div class="scard expense"><div class="k">고정비+변동비</div><div class="v">${fmt(expenseTotal)}</div></div>
+    <div class="scard invest"><div class="k">투자</div><div class="v">${fmt(investTotal)}</div></div>
+    <div class="scard net"><div class="k">이 달 순잔액</div><div class="v">${net>=0?'+':''}${fmt(net)}</div></div>
+  `;
+
+  renderList('incomeList', incomes, 'income');
+  renderList('fixedList', fixed, 'fixed');
+  renderList('investList', invest, 'invest');
+  renderVarList(mk, varCats, varVals);
+}
+
+function renderList(elId, rules, type){
+  const el = document.getElementById(elId);
+  if(rules.length===0){ el.innerHTML = '<div class="empty">이 달엔 해당 항목이 없어요</div>'; return; }
+  el.innerHTML = rules.map(r=>{
+    let sub = '';
+    if(r.start || r.end){
+      sub = [r.start?`${r.start}부터`:'', r.end?`${r.end}까지`:'상시'].filter(Boolean).join(' · ');
+    }
+    const cls = type==='income' ? 'pos' : (type==='invest' ? '' : 'neg');
+    return `<div class="item-row">
+      <div class="item-name"><span class="dot ${type}"></span>
+        <div><div>${r.name}</div><div class="item-sub">${sub}</div></div>
+      </div>
+      <div style="display:flex;align-items:center;">
+        <span class="item-amt ${cls}">${type==='income'?'+':''}${fmt(r.amount)}</span>
+        <span class="item-actions">
+          <span class="icon-btn" onclick="editRule('${r.id}')">✎</span>
+          <span class="icon-btn" onclick="deleteRule('${r.id}')">✕</span>
+        </span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderVarList(mk, cats, vals){
+  const el = document.getElementById('varList');
+  el.innerHTML = cats.map((c,i)=>`
+    <div class="var-row">
+      <input type="text" class="catname" value="${c}" data-idx="${i}" onchange="renameCategory(${i}, this.value)">
+      <input type="text" class="amt" inputmode="numeric" value="${fmtNum(vals[c]||0)}" data-cat="${c}">
+      <span class="icon-btn" onclick="removeCategory(${i})">✕</span>
+    </div>
+  `).join('');
+  el.querySelectorAll('input.amt').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      const cat = e.target.dataset.cat;
+      const raw = e.target.value.replace(/[^0-9]/g,'');
+      if(!data.monthlyVariables[mk]) data.monthlyVariables[mk] = {};
+      data.monthlyVariables[mk][cat] = Number(raw)||0;
+      e.target.value = fmtNum(data.monthlyVariables[mk][cat]);
+      updateVarTotal(mk, cats);
+      updateSummaryOnly(mk);
+      scheduleSave();
+    });
+  });
+  updateVarTotal(mk, cats);
+}
+
+function updateVarTotal(mk, cats){
+  const vals = data.monthlyVariables[mk] || {};
+  const total = cats.reduce((a,c)=>a+(Number(vals[c])||0),0);
+  document.getElementById('varTotal').textContent = fmt(total);
+}
+
+function updateSummaryOnly(mk){
+  // cheap recompute of top summary row without re-rendering lists
+  const incomes = activeRules('income', mk);
+  const fixed = activeRules('fixed', mk);
+  const invest = activeRules('invest', mk);
+  const varVals = data.monthlyVariables[mk] || {};
+  const incomeTotal = incomes.reduce((a,r)=>a+r.amount,0);
+  const fixedTotal = fixed.reduce((a,r)=>a+r.amount,0);
+  const investTotal = invest.reduce((a,r)=>a+r.amount,0);
+  const varTotal = data.variableCategories.reduce((a,c)=>a+(Number(varVals[c])||0),0);
+  const expenseTotal = fixedTotal + varTotal;
+  const net = incomeTotal - expenseTotal - investTotal;
+  document.getElementById('summaryRow').innerHTML = `
+    <div class="scard income"><div class="k">총수입</div><div class="v">${fmt(incomeTotal)}</div></div>
+    <div class="scard expense"><div class="k">고정비+변동비</div><div class="v">${fmt(expenseTotal)}</div></div>
+    <div class="scard invest"><div class="k">투자</div><div class="v">${fmt(investTotal)}</div></div>
+    <div class="scard net"><div class="k">이 달 순잔액</div><div class="v">${net>=0?'+':''}${fmt(net)}</div></div>
+  `;
+}
+
+function renameCategory(idx, newName){
+  const old = data.variableCategories[idx];
+  if(!newName || newName===old) { render(); return; }
+  data.variableCategories[idx] = newName;
+  Object.keys(data.monthlyVariables).forEach(mk=>{
+    if(data.monthlyVariables[mk][old]!==undefined){
+      data.monthlyVariables[mk][newName] = data.monthlyVariables[mk][old];
+      delete data.monthlyVariables[mk][old];
+    }
+  });
+  render(); scheduleSave();
+}
+function addVarCategory(){
+  const name = prompt('추가할 변동비 카테고리 이름');
+  if(!name) return;
+  data.variableCategories.push(name);
+  render(); scheduleSave();
+}
+function removeCategory(idx){
+  data.variableCategories.splice(idx,1);
+  render(); scheduleSave();
+}
+
+function openRuleModal(type){
+  editingRule = {type, id:null};
+  document.getElementById('modalTitle').textContent =
+    type==='income' ? '수입 항목 추가' : type==='fixed' ? '고정비 항목 추가' : '투자 항목 추가';
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-amount').value = '';
+  document.getElementById('f-start').value = monthKey(cursor.y, cursor.m);
+  document.getElementById('f-end').value = '';
+  document.getElementById('modalBg').classList.add('open');
+}
+function editRule(id){
+  const r = data.rules.find(x=>x.id===id);
+  if(!r) return;
+  editingRule = {type:r.type, id:r.id};
+  document.getElementById('modalTitle').textContent = '항목 수정';
+  document.getElementById('f-name').value = r.name;
+  document.getElementById('f-amount').value = r.amount;
+  document.getElementById('f-start').value = r.start||'';
+  document.getElementById('f-end').value = r.end||'';
+  document.getElementById('modalBg').classList.add('open');
+}
+function deleteRule(id){
+  data.rules = data.rules.filter(r=>r.id!==id);
+  render(); scheduleSave();
+}
+function closeModal(){
+  document.getElementById('modalBg').classList.remove('open');
+  editingRule = null;
+}
+function saveRule(){
+  const name = document.getElementById('f-name').value.trim();
+  const amount = Number(document.getElementById('f-amount').value.replace(/[^0-9]/g,''))||0;
+  const start = document.getElementById('f-start').value;
+  const end = document.getElementById('f-end').value;
+  if(!name || !amount){ alert('이름과 금액을 입력해주세요'); return; }
+  if(editingRule.id){
+    const r = data.rules.find(x=>x.id===editingRule.id);
+    r.name=name; r.amount=amount; r.start=start; r.end=end;
+  } else {
+    data.rules.push({id:'r'+Date.now(), type:editingRule.type, name, amount, start, end});
+  }
+  closeModal();
+  render(); scheduleSave();
+}
+
+load();
+</script>
+<script>
+if ("serviceWorker" in navigator && location.protocol !== "file:") {
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));
+}
+</script>
+</body>
+</html>
